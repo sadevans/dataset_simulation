@@ -97,14 +97,33 @@ def transform_w_bezier(img, ext, int):
                 averages_colors = reshaped_colors[np.arange(len(reshaped_colors)), max_indices]
                 if len(averages_angls) != dist_:
                     print('dist = {:.2f}, len angls = {:.2f}, len line = {:.2f}'.format(dist_, len(averages_angls), len(discrete_line))) 
-                if new_angles[point[1], point[0]]  == 0 or dist_>10:
-                    if dist_>10:
+                # if new_angles[point[1], point[0]]  == 0 or dist_>10:
+                if new_angles[point[1], point[0]]  == 0:
 
-                        draw_gradient_line(color_map, nearest_point, discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
-                        draw_gradient_line(new_angles, nearest_point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                    # if dist_>10:
+
+                        # draw_gradient_line(color_map, nearest_point, discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
+                        # draw_gradient_line(new_angles, nearest_point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                        # draw_gradient_line(color_map, point, discrete_line, averages_colors, thickness=2)
+                        # draw_gradient_line(new_angles, point, discrete_line, averages_angls, thickness=2)
+                    draw_gradient_line(new_angles, next[0], discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                if color_map[point[1], point[0]]  == 0:
+
+                    # if dist_>10:
+
+                        # draw_gradient_line(color_map, nearest_point, discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
+                        # draw_gradient_line(new_angles, nearest_point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                        # draw_gradient_line(color_map, point, discrete_line, averages_colors, thickness=2)
+                        # draw_gradient_line(new_angles, point, discrete_line, averages_angls, thickness=2)
+                    draw_gradient_line(color_map, next[0], discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
+
 
                     # else:    
-                    draw_gradient_line(new_angles, nearest_point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                    # draw_gradient_line(new_angles, nearest_point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                    # draw_gradient_line(new_angles, point, discrete_line, averages_angls, thickness=2)
+                    # draw_gradient_line(new_angles, next[0], discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+
+
 
     img_cp = img.copy()
     mask = img_cp != 128 
