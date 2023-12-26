@@ -9,9 +9,9 @@ from tqdm import tqdm
 from figure.fig import *
 from src.transforms import *
 from numba import cuda
+from src.cuda_transform import *
 # import cupy as cp
 
-@cuda.jit
 def transform_w_bezier_new(img, ext, int):
     color_back = 110
     color_hole = 85
@@ -442,7 +442,7 @@ if __name__ == '__main__':
                         cv2.drawContours(temp, [objects[i].border], -1, 128, -1)
                         cv2.drawContours(temp, [objects[i].contour], -1, 255, -1)
 
-                        width, new_angles, color_map = transform_w_bezier_new(temp, [objects[i].border], [objects[i].contour])
+                        width, new_angles, color_map = cuda_transform_w_bezier_new(temp, [objects[i].border], [objects[i].contour])
                         color_map[temp == 0] = color_back
                         color_map[temp == 255] = color_hole
                         new_angles[temp != 128] = 0.0
@@ -461,7 +461,8 @@ if __name__ == '__main__':
             else:
                 ext, int = detect_contours(res)
                 # print(len(int), len(ext))
-                width, new_angles, color_map = transform_w_bezier_new(res, ext, int)
+                # width, new_angles, color_map = transform_w_bezier_new(res, ext, int)
+                width, new_angles, color_map = cuda_transform_w_bezier_new(res, ext, int)
                 color_map[res == 0] = color_back
                 color_map[res == 255] = color_hole
                 print(k)

@@ -148,6 +148,14 @@ def closest_point(point, array):
     distance = np.einsum('ij,ij->i', diff, diff)
     return np.argmin(distance), distance
 
+
+@torch.jit.script
+def cuda_closest_point(point, array):
+    diff = array - point.unsqueeze(0)
+    distance = torch.sum(diff ** 2, dim=1)
+    return torch.argmin(distance), distance
+
+
 def parabola(x, a, b, c):
     return a*x**2 + b*x + c
 
@@ -168,6 +176,29 @@ def draw_gradient_line(img, start_point, points, colors, thickness=4, flag=None)
                     cv2.line(img, start, points[i+1], colors[i], thickness)
                 start = points[i]
 
+# @torch.jit.script
+def cuda_draw_gradient_line(img, start_point, points, colors, thickness=4, flag=None):
+    start = start_point
+    print(colors)
+    colors = list(colors.cpu().detach().numpy())
+    print(colors)
+    print(points)
+
+    print(flag)
+    if flag is None:
+        for i in range(1, len(points) - 1):
+            if i+1 != len(points)-1:
+                cv2.line(img.cpu().detach().numpy(), (start[0].item(), start[1].item()), (points[i+1][0].item(), points[i+1][1].item()), colors[i], thickness)
+            start = points[i]
+    elif flag == 'ext':
+        print(points.size(0))
+        print(len(points))
+        for i in range(1, len(points) - 1):
+            if img[start[1], start[0]] == 0 or img[start[1], start[0]] == 255 or img[start[1], start[0]]==128:
+                print(start)
+                if i+1 != len(points)-1:
+                    cv2.line(img.cpu().detach().numpy(), (start[0].item(), start[1].item()), (points[i+1][0].item(), points[i+1][1].item()), colors[i].item(), thickness)
+                start = points[i]
 
 
 def compute_previous_pixel(first_pixel, last_pixel, distance=1):
@@ -182,6 +213,19 @@ def compute_previous_pixel(first_pixel, last_pixel, distance=1):
 
     return (x_t, y_t)
 
+
+# @torch.jit.script
+def cuda_compute_previous_pixel(first_pixel, last_pixel, distance=1):
+    diff = last_pixel - first_pixel
+    length = torch.sqrt(torch.sum(diff ** 2))
+    length = torch.where(length == 0, torch.tensor(1.0), length)
+    t = -distance / length
+    x_t = torch.round((first_pixel[0] + t * (last_pixel[0] - first_pixel[0]))).to(torch.int32)
+    y_t = torch.round((first_pixel[1] + t * (last_pixel[1] - first_pixel[1]))).to(torch.int32)
+    return x_t, y_t
+
+
+
 def compute_next_pixel(first_point, last_point, distance=1):
     x1, y1 = first_point
     x2, y2 = last_point
@@ -195,38 +239,11 @@ def compute_next_pixel(first_point, last_point, distance=1):
     return (x_t, y_t)
 
 
-
-# def formula_second(img, angles, color_map, k, file_name, save_dir):
-#     print(f'{save_dir}/{file_name}')
-#     signal = np.zeros_like(img, dtype=np.float32)
-
-
-#     alpha_bord = angles[img == 128]
-
-#     alpha_bord[alpha_bord==alpha_bord.min()] = np.radians(1)
-
-#     alpha_back = angles[img == 0]
-#     alpha_hole = angles[img == 255]
-
-#     # k = k * 
-#     signal[img == 0] = (k*(1/(np.abs(np.cos(np.radians(alpha_back + 1)))**(0.87)) - 1) + 1) * color_map[img==0]
-
-#     signal[img == 128] = (k * (1/(np.abs(np.cos(np.radians(90)-(np.radians(180 - 90) - alpha_bord)))**(0.87)) - 1) + 1) *color_map[img==128]
-
-
-#     signal[img == 255] = (k * (1 / (np.abs(np.cos(np.radians(alpha_hole + 1)))**(1.1)) - 1) + 1) * color_map[img==255]
-
-#     signal = np.clip(signal, 0, 255)
-#     # signal_mask = signal[img != 128]
-#     signal = cv2.GaussianBlur(signal, (11,11), 0)
-#     # signal = cv2.GaussianBlur(signal, (9,9), 0)
-
-#     # signal[img != 128] = signal
-
-#     # cv2.imwrite(f'{save_dir}{file_name[:-4]}_signal_k{k}_6.png', signal.astype(np.uint8))
-#     cv2.imwrite(f'{save_dir}/{file_name[:-4]}.png', signal.astype(np.uint8))
-#     # cv2.imwrite(f'{save_dir}/{file_name}', signal.astype(np.uint8))
-
-
-
-#     return signal
+# @torch.jit.script
+def cuda_compute_next_pixel(first_point, last_point, distance=1):
+    diff = last_point - first_point
+    length = torch.sqrt(torch.sum(diff ** 2))
+    t = 1 + distance / length
+    x_t = torch.round((first_point[0] + t * (last_point[0] - first_point[0]))).to(torch.int32)
+    y_t = torch.round((first_point[1] + t * (last_point[1] - first_point[1]))).to(torch.int32)
+    return x_t, y_t
