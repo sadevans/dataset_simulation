@@ -166,3 +166,11 @@ cython_debug/
 /raw
 /signal
 /semantic
+
+file.py
+main.py
+test_algo.py
+test_copy.py
+test_new copy.py
+test.py
+copy_test.py
