@@ -51,7 +51,7 @@ def transform_w_bezier(img, ext, int):
                 averages_angls = np.max(reshaped_angls, axis=1)
                 max_indices = np.argmax(reshaped_angls, axis=1)
                 averages_colors = reshaped_colors[np.arange(len(reshaped_colors)), max_indices]
-                print(averages_colors)
+                # print(averages_colors)
                 if len(averages_angls) != dist_:
                     print('dist = {:.2f}, len angls = {:.2f}, len line = {:.2f}'.format(dist_, len(averages_angls), len(discrete_line)))
                 
@@ -74,7 +74,7 @@ def transform_w_bezier(img, ext, int):
                     # else:
                     # discrete_line = list(zip(*line(*point, *nearest_point)))
                     dist_ = len(discrete_line)
-                    print(dist_)
+                    # print(dist_)
 
                 if dist_ == 0:
                     dist_ = 1
@@ -128,7 +128,10 @@ def transform_w_bezier(img, ext, int):
     img_cp = img.copy()
     mask = img_cp != 128 
     width_img[mask] = 0
-    new_angles[mask] = 0
+    new_angles[mask] = 1
+
+    # mask1 = img == 128
+    np.where(new_angles == 0, np.nan, new_angles)
     color_map[img == 0] = color_back
     color_map[img == 255] = color_hole
     return width_img, new_angles, color_map
