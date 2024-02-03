@@ -14,133 +14,97 @@ from scipy.ndimage import gaussian_filter1d
 
 import torch
 from torch.distributions.gamma import Gamma
+from figure.fig import Figure
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 # print(device)
 
+# class Img():
+#     def __init__(self, image):
+
+def detect_cont(img):
+    cont, _ = cv2.findContours(img, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    return cont
 
 def detect_contours(img):
-    # kernel = np.ones((2, 2), np.uint8)
-    # closed = cv2.morphologyEx(img, cv2.MORPH_CLOSE, kernel)
+    # objects = []
+    # mask_hole = cv2.inRange(img, 255, 255)
+    # mask_bord = cv2.inRange(img, 128, 255)
 
-    # Применение операции вычитания для получения разницы между закрытым и исходным изображением
-    # diff = cv2.absdiff(closed, img)
+    # c_int_ = detect_cont(mask_hole)
+    # c_ext_ = detect_cont(mask_bord)
 
-    # diff = cv2.erode(img, kernel, iterations=1)
-    # diff = cv2.dilate(diff, kernel, iterations=1)
+    # set_borders = [set(map(tuple, np.argwhere(cv2.drawContours(np.zeros_like(img), [c_ext_[i]], -1, 128, -1)==128))) for i in range(len(c_ext_))]
+    # set_holes = [set(map(tuple, np.argwhere(cv2.drawContours(np.zeros_like(img), [c_int_[j]], -1, 255, -1)==255))) for j in range(len(c_int_)))]
 
-    # mask_bord = cv2.inRange(diff, 128, 128)
-    mask_bord = cv2.inRange(img, 128,128)
-    # plt.imshow(mask_bord)
-    # plt.show()
+    # for i, set_border in enumerate(set_borders):
+    #     for j, set_hole in enumerate(set_holes):
+    #         if set_hole.issubset(set_border):
+    #             obj = Figure(c_int_[j].reshape(-1, 2))
+    #             obj.border = c_ext_[i].reshape(-1, 2).copy()
+    #             objects.append(obj)
+    objects = []
+    mask_hole = cv2.inRange(img, 255, 255)
+    mask_bord = cv2.inRange(img, 128, 255)
 
-    cont, hier = cv2.findContours(mask_bord, cv2.RETR_TREE, cv2.CHAIN_APPROX_NONE)
+    c_int_ = detect_cont(mask_hole)
+    c_ext_ = detect_cont(mask_bord)
 
-    # cont_small, hier_small = cv2.findContours(mask_bord, cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)
-    mask_cont2 = np.zeros_like(img)
-    mask_cont2 = cv2.drawContours(mask_cont2, cont, -1, 200, 0)
-    # plt.imshow(mask_cont2)
-    # plt.title('smalls')
-    # plt.show()
-    ext = []
-    int = []
-    test = np.zeros_like(img)
-    mask_cont1 = np.zeros_like(img)
-    k = 1
-    # mask_cont = np.zeros_like(img)
-    # cv2.drawContours(test, cont, -1, 255, -1)
-    # plt.imshow(test)
-    # plt.show()
-    # print(cont[0])
-    # print(hier)
-    for i in range(len(cont)):
-    # for i in range(len(hier[0])):
-    # for i, j in zip(range(len(cont)), range(len(hier[0]))):
-    # for i in range(2):
-        print(cont[i])
-        mask_cont = np.zeros_like(img)
+    temp_ext = []
+    temp_int = []
 
-        if hier[0][i][3] == -1:
-            mask_cont = cv2.drawContours(mask_cont, [cont[i]], 0, 255, 0)
-            c, _ = cv2.findContours(mask_cont, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    for i in range(len(c_ext_)):
+        for j in range(len(c_int_)):
+            temp_bord = np.zeros_like(img)
+            cv2.drawContours(temp_bord, [c_ext_[i]], -1, 128, -1)
+            temp_hole = np.zeros_like(img)
+            cv2.drawContours(temp_hole, [c_int_[j]], -1, 255, -1)
+            set_border = set(map(tuple, np.argwhere(temp_bord==128)))
+            set_hole = set(map(tuple, np.argwhere(temp_hole==255)))
+            if set_hole.issubset(set_border):
+                obj = Figure(c_int_[j].reshape(-1, 2)) # создаем объекты класса Figure
+                obj.border = c_ext_[i].reshape(-1, 2).copy()
+                objects.append(obj)
 
-            nonz = cv2.bitwise_and(img, img, mask=mask_cont)
-            # print(cont[i])
-            # print(np.argwhere(nonz > 0))
-            # plt.imshow(mask_cont)
-            # plt.show()
-            # cv2.fillPoly(mask_cont1, [cont[i]], 1)
-            # nonzero = np.argwhere(mask_cont > 0)
-            nonzero = np.argwhere(nonz > 0)
+    # while len(c_ext) != np.minimum(len(c_ext_), len(c_int_)):
+    #     temp_bord = np.zeros_like(img)
+    #     cv2.drawContours(temp_bord, [c_ext_[i].reshape(-1, 2)], -1, 128, -1)
+    #     temp_hole = np.zeros_like(img)
+    #     cv2.drawContours(temp_hole, [c_int_[j].reshape(-1, 2)], -1, 255, -1)
+    #     set_border = set(map(tuple, np.argwhere(temp_bord==128)))
+    #     set_hole = set(map(tuple, np.argwhere(temp_hole==255)))
+    #     if set_hole.issubset(set_border):
+    #         print('SUBSET ', i, j)
+    #         c_ext.append(c_ext_[i].reshape(-1, 2))
+    #         c_int.append(c_int_[j].reshape(-1, 2))
+    #         obj = Figure(int[i]) # создаем объекты класса Figure
+    #         obj.border = ext[i].copy()
+    #         objects.append(obj)
 
-            nonzero = np.array([list(reversed(nonz)) for nonz in nonzero])
-            print(type(cont[i]))
-            print(len(cont[i]), len(nonzero), len(c[0]))
-            # ext.append(nonzero)
-            ext.append(cont[i].reshape(-1, 2))
-            # print(nonzero)
+    #         if j == i:
+    #             print('i == j: ', i, j)
+    #             i+= 1
+    #             # if j != len(c_int_):
+    #             j += 1
+    #         else:
+    #             print('i != j: ', i, j)
+    #             i+= 1
+    #             j = temp_j
+    #             print(i, j)
 
-            # k += 1
-            # x, y, w, h = cv2.boundingRect(np.array(cont[i]))
-            # # print(x, y)
-            # if ((y != 0) and ((y + h) != mask_cont.shape[0])) or ((x != 0) and (x+w) != mask_cont.shape[1]):
-            #     cv2.drawContours(test, [cont[i]], 0, 128, 0)
-            #     nonzero = np.argwhere(mask_cont > 0)
-            #     nonzero = np.array([list(reversed(nonz)) for nonz in nonzero])
+    #     else:
+    #         print('NOT A SUBSET ', i, j)
+    #         # if temp_j < j:
+    #         temp_j = j
+    #         print('TEMP J ',temp_j)
 
-            #     ext.append(nonzero)
-            # else:
-            #     img[y:y+h, y:y+h, x:x+w] = 0
+    #         if j != len(c_int_):
+    #             j += 1
+    
 
-            # print(nonzero[127])
+    # return c_ext, c_int
+    return objects
 
-
-        else:
-            
-            mask_cont = cv2.drawContours(mask_cont, [cont[i]], 0, 255, 0)
-            c, _ = cv2.findContours(mask_cont, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
-            nonz = cv2.bitwise_and(img, img, mask=mask_cont)
-
-            # nonzero = np.argwhere(mask_cont > 0)
-            nonzero = np.argwhere(nonz > 0)
-
-            nonzero = np.array([list(reversed(nonz)) for nonz in nonzero])
-            print(type(cont[i]))
-
-            print(len(cont[i]), len(nonzero), len(c[0]))
-            int.append(cont[i].reshape(-1, 2))
-            # if len(nonzero) > 20:
-            #     int.append(nonzero)
-            # print(nonzero)
-
-            # plt.imshow(mask_cont)
-            # plt.show()
-            # x, y, w, h = cv2.boundingRect(np.array(cont[i]))
-            # if ((y != 0) and ((y + h) != mask_cont.shape[0])) or ((x != 0) and (x+w) != mask_cont.shape[1]):
-            #     cv2.drawContours(test, [cont[i]], 0, 255, 0)
-                
-            #     nonzero = np.argwhere(mask_cont > 0)
-            #     nonzero = np.array([list(reversed(nonz)) for nonz in nonzero])
-            #     int.append(nonzero)
-            # else:
-            #     img[y:y+h, x:x+w] = 0
-
-    # plt.imshow(test)
-
-    # plt.imshow(mask_cont2)
-    # plt.imshow(test)
-    # print('cont lens: ', len(ext), len(int))
-    # cv2.drawContours(test, ext, -1, 128, 0)
-    # cv2.drawContours(test, int, -1, 255, 0)
-
-
-    # # plt.imshow(mask_cont)
-    # plt.imshow(test)
-
-    # plt.show()
-
-
-    return ext, int
 
 
 def closest_point(point, array):

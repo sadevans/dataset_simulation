@@ -9,6 +9,7 @@ from tqdm import tqdm
 from figure.fig import *
 from src.transforms import *
 
+
 def transform_w_bezier_new(img, ext, int):
     color_back = 110
     color_hole = 85
@@ -231,7 +232,8 @@ if __name__ == '__main__':
     color_back = 110
     color_hole = 85
     flag_signal = True
-    flag_sem_masks = True
+    flag_sem_masks = False
+    
 
     method = 'bezier'
     if method == 'bezier': # okay
@@ -250,32 +252,49 @@ if __name__ == '__main__':
     a = 50
     b = 10
 
-    # folder_path = '/home/sasha/WSLProjects/dataset_simulation/data/bin_masks'
+    folder_path = '/home/sasha/WSLProjects/dataset_simulation/data/bin_masks'
     # folder_path = '/home/sasha/WSLProjects/dataset_simulation/data/test_png_labels'
-    folder_path = '/home/sasha/WSLProjects/dataset_simulation/data/train_png_labels'
+    # folder_path = '/home/sasha/WSLProjects/dataset_simulation/data/train_png_labels'
 
 
     # folder_path = save_semantic_dir
     parent_directory = Path(folder_path).parent
-    signal_path = os.path.join(parent_directory, 'train_png_signal')
-    # raw_path = os.path.join(parent_directory, 'raw')
-    raw_path = '/home/sasha/WSLProjects/dataset_simulation/data/train_png_raw'
+    # signal_path = os.path.join(parent_directory, 'train_png_signal')
+    # signal_path = os.path.join(parent_directory, 'signal')
 
+    # raw_path = os.path.join(parent_directory, 'raw_more_noise')
+    # raw_path = '/home/sasha/WSLProjects/dataset_simulation/data/train_png_raw'
+
+    
+
+    # print(folder_path)
+    # parent_directory = os.path.dirname(folder_path)
+    # semantic_path = '/home/sasha/WSLProjects/dataset_simulation/data/train_png_labels_semantic'
+    semantic_path = '/home/sasha/WSLProjects/dataset_simulation/data/sem'
+    parent_directory = os.path.dirname(semantic_path)
+    signal_path = os.path.join(parent_directory, 'signal')
+
+    raw_path = os.path.join(parent_directory, 'raw')
     os.makedirs(signal_path, exist_ok=True)
     os.makedirs(raw_path, exist_ok=True)
 
-    # print(folder_path)
-    parent_directory = os.path.dirname(folder_path)
-    semantic_path = '/home/sasha/WSLProjects/dataset_simulation/data/train_png_labels_semantic'
+
     # semantic_path = os.path.join(parent_directory, 'sem')
     os.makedirs(semantic_path, exist_ok=True)
 
-    filenames_masks = os.listdir(folder_path)
+    # filenames_masks = os.listdir(folder_path)
+    # filenames_masks.sort()
+
+    filenames_masks = os.listdir(semantic_path)
     filenames_masks.sort()
+
+    # print(filenames_masks)
+
+
     # print(filenames_masks[-1:-3])
     # print(filenames_masks)
     first_contours = []
-    for file in tqdm(filenames_masks[-1::-1]):
+    # for file in tqdm(filenames_masks[-1::-1]):
     # for file in tqdm(['20412.png']):
     # for file in tqdm(['20331.png']):
     # for file in tqdm(['20001.png']):
@@ -284,152 +303,194 @@ if __name__ == '__main__':
     # for file in tqdm(['20907.png']):
     # for file in tqdm(['20331.png']):
     # for file in tqdm(['circles.png']):
+    # for file in tqdm(filenames_masks[39:]):
+    for file in tqdm(['r.png']):
+
+        # print(os.path.join(semantic_path, file))
+
         flag_touching = True
         # print(file)
 
         objects = [] # массив 
-        img = cv2.imread(os.path.join(folder_path, file), 0)
-        img = edit_bin_mask(img)
+        # img = cv2.imread(os.path.join(folder_path, file), 0)
+        img = cv2.imread(os.path.join(semantic_path, file), 0)
+
+        if flag_sem_masks : img = edit_bin_mask(img)
         # first_contours.append(detect_cont(img))
 
-        first_contours = detect_cont(img)
+        if flag_sem_masks:
+            first_contours = detect_cont(img)
 
-        # отрисовываем контуры, чтобы получить все точки, создаем объекты Figure
-        for contour in first_contours:
-            temp = np.zeros_like(img)                     # создание временной картинки
-            cv2.drawContours(temp, [contour], -1, 255, -1) # рисование контура с первоначальным offset
-
-
-            c, _ = cv2.findContours(np.clip(temp, 0, 1), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)  # детектирование контура
-
-            obj = Figure(c[0].reshape(-1, 2)) # создаем объекты класса Figure
-            objects.append(obj)
-
-        # for i, obj in enumerate(objects):
-        for i in range(len(objects)):
-            # m = i + 2
-            if len(objects[i].contour) > 1000:
-                m = random.randint(3, 3)
-            elif len(objects[i].contour) > 600:
-                m = random.randint(3, 5)
-            elif len(objects[i].contour) > 150:
-                m = random.randint(3, 10)
-            else:
-                m = random.randint(3, 20)
-
-            # flag_render = False
-            break_flag = False
-            for j in range(3, m + 1):
-                # сначала пытаемся отрендерить с данной шириной
-                # и проверяем, не пересекается ли с другими границами или объектами
-                obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, j) # может быть еще что-то надо передавать
-                # print('flag, bad obj num, width, max width: ', flag_render, obj_num, j, m)
-                while flag_render==False:
-                    if j-2 >= 3: 
-                        objects[i].border_width -= 2
-                        obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, objects[i].border_width)
-                        # print('im here, obj, flag, width = ', obj_num, flag_render, objects[i].border_width)
-                        break_flag = True
-                    else:
-                        if objects[obj_num].border_width - 2 >= 3:
-                            objects[obj_num].border_width -= 2
-                            objects[obj_num].init_border_contour(img, objects[obj_num])
-                            obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, objects[i].border_width)
-                            # print('NOW here, obj, flag = ', obj_num, flag_render)
-                        else:
-                            objects[i].border_width = 3
-                            obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, objects[i].border_width)
-                            # print('HERE, obj, flag, width = ', obj_num, flag_render, objects[i].border_width)
-                            # break_flag = True
-                            if obj_num is not None and objects[i].border_width == 3 and objects[obj_num].border_width == 3:
-                                flag_touching = True
-                            flag_render = True
-                            break_flag = True
-
-                if break_flag:
-                    break
-
-        res = np.zeros_like(img)
-
-        for i in range(len(objects)):
-            bord_img_0_x = any(0 in coord for coord in zip(objects[i].border[:,0]))
-            bord_img_n_x = any(img.shape[1] in coord for coord in zip(objects[i].border[:,0]))
-            # bord_img_0_x = any(0 in coord for coord in zip(*objects[i].border))
-            bord_img_n_y = any(img.shape[0] in coord for coord in zip(objects[i].border[:,1]))
-            bord_img_0_y = any(0 in coord for coord in zip(objects[i].border[:,1]))
+            # отрисовываем контуры, чтобы получить все точки, создаем объекты Figure
+            for contour in first_contours:
+                temp = np.zeros_like(img)                     # создание временной картинки
+                cv2.drawContours(temp, [contour], -1, 255, -1) # рисование контура с первоначальным offset
 
 
-            if bord_img_0_x or bord_img_n_x:
-                objects[i] = None
-                continue
-            elif bord_img_0_y or bord_img_n_y:
-                objects[i] = None
-                continue
-            else:
-                # tm = np.zeros_like(img)
-                # cv2.drawContours(tm , [objects[i].border], -1, 128, 0)
-                # cv2.drawContours(tm , [objects[i].contour], -1, 255, 0)
-                # plt.imshow(tm)
-                # plt.show()
-                # UNCOMMENT
-                if objects[i].border_width > 3:
-                    # print()
-                    after_touch = False
+                c, _ = cv2.findContours(np.clip(temp, 0, 1), cv2.RETR_LIST, cv2.CHAIN_APPROX_NONE)  # детектирование контура
 
-                    # while objects[i].border_width > 1 and touch(img, first_contours, objects, i):
-                    temp_touch = np.zeros_like(img)
-                    # cv2.fillPoly(can, [objects[i].border], 128)
-                    # if objects[i].border_width == 3:
-                    cv2.drawContours(temp_touch, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
-                    cv2.drawContours(temp_touch, [first_contours[i]], -1, 128, -1)
-                    temp_touch_2 = np.zeros_like(img)
-                    cv2.drawContours(temp_touch_2, [objects[i].border], -1, 255, -1)
-                    cv2.drawContours(temp_touch_2, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
-                    cv2.drawContours(temp_touch_2, [first_contours[i]], -1, 128, -1)
-                    # fig, ax = plt.subplots(1, 2, figsize=(10,10))
-                    # ax[0].imshow(temp_touch)
-                    # ax[0].set_title('> 3 temp touch')
-                    # ax[1].imshow(temp_touch_2)
-                    # ax[1].set_title('> 3 temp touch 2')
-                    # plt.show()
+                obj = Figure(c[0].reshape(-1, 2)) # создаем объекты класса Figure
+                objects.append(obj)
 
-                    arr = np.where((temp_touch == 0) & (temp_touch_2==255))
-                    # print(arr[0])
-                    if len(arr[0]) > 0:
-                    # print('TOUCH')
-                    # print('> 3 ', len(objects[i].contour), objects[i].border_width)
-                        temp = np.zeros_like(img)
-                        cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width-2))
-                        temp_cont = detect_cont(temp)
-                        objects[i].border = temp_cont[0].reshape(-1, 2).copy()
-                        objects[i].border_width -= 2 
-                    cv2.drawContours(res, [first_contours[i]], -1, 128, 2*(objects[i].border_width-1))
-                    temp = np.zeros_like(img)
-                    cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
-                    zeros = np.where((temp == 255) & (res==0))
-                    
-                    if len(zeros[0]) > 0:
-                        res[zeros[0][:], zeros[1][:]] = 128
-
+            # for i, obj in enumerate(objects):
+            for i in range(len(objects)):
+                # m = i + 2
+                if len(objects[i].contour) > 1000:
+                    m = random.randint(3, 3)
+                elif len(objects[i].contour) > 600:
+                    m = random.randint(3, 5)
+                elif len(objects[i].contour) > 150:
+                    m = random.randint(3, 10)
                 else:
-                    if touch(img, first_contours, objects, i) and objects[i].border_width>1:
+                    m = random.randint(3, 20)
+
+                # flag_render = False
+                break_flag = False
+                for j in range(3, m + 1):
+                    # сначала пытаемся отрендерить с данной шириной
+                    # и проверяем, не пересекается ли с другими границами или объектами
+                    obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, j) # может быть еще что-то надо передавать
+                    # print('flag, bad obj num, width, max width: ', flag_render, obj_num, j, m)
+                    while flag_render==False:
+                        if j-2 >= 3: 
+                            objects[i].border_width -= 2
+                            obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, objects[i].border_width)
+                            # print('im here, obj, flag, width = ', obj_num, flag_render, objects[i].border_width)
+                            break_flag = True
+                        else:
+                            if objects[obj_num].border_width - 2 >= 3:
+                                objects[obj_num].border_width -= 2
+                                objects[obj_num].init_border_contour(img, objects[obj_num])
+                                obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, objects[i].border_width)
+                                # print('NOW here, obj, flag = ', obj_num, flag_render)
+                            else:
+                                objects[i].border_width = 3
+                                obj_num, flag_render = objects[i].try_render(img, objects, objects[i], i, objects[i].border_width)
+                                # print('HERE, obj, flag, width = ', obj_num, flag_render, objects[i].border_width)
+                                # break_flag = True
+                                if obj_num is not None and objects[i].border_width == 3 and objects[obj_num].border_width == 3:
+                                    flag_touching = True
+                                flag_render = True
+                                break_flag = True
+
+                    if break_flag:
+                        break
+
+            res = np.zeros_like(img)
+
+            for i in range(len(objects)):
+                bord_img_0_x = any(0 in coord for coord in zip(objects[i].border[:,0]))
+                bord_img_n_x = any(img.shape[1] in coord for coord in zip(objects[i].border[:,0]))
+                # bord_img_0_x = any(0 in coord for coord in zip(*objects[i].border))
+                bord_img_n_y = any(img.shape[0] in coord for coord in zip(objects[i].border[:,1]))
+                bord_img_0_y = any(0 in coord for coord in zip(objects[i].border[:,1]))
+
+
+                if bord_img_0_x or bord_img_n_x:
+                    objects[i] = None
+                    continue
+                elif bord_img_0_y or bord_img_n_y:
+                    objects[i] = None
+                    continue
+                else:
+                    # tm = np.zeros_like(img)
+                    # cv2.drawContours(tm , [objects[i].border], -1, 128, 0)
+                    # cv2.drawContours(tm , [objects[i].contour], -1, 255, 0)
+                    # plt.imshow(tm)
+                    # plt.show()
+                    # UNCOMMENT
+                    if objects[i].border_width > 3:
+                        # print()
+                        after_touch = False
+
+                        # while objects[i].border_width > 1 and touch(img, first_contours, objects, i):
+                        temp_touch = np.zeros_like(img)
+                        # cv2.fillPoly(can, [objects[i].border], 128)
+                        # if objects[i].border_width == 3:
+                        cv2.drawContours(temp_touch, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
+                        cv2.drawContours(temp_touch, [first_contours[i]], -1, 128, -1)
+                        temp_touch_2 = np.zeros_like(img)
+                        cv2.drawContours(temp_touch_2, [objects[i].border], -1, 255, -1)
+                        cv2.drawContours(temp_touch_2, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
+                        cv2.drawContours(temp_touch_2, [first_contours[i]], -1, 128, -1)
+                        # fig, ax = plt.subplots(1, 2, figsize=(10,10))
+                        # ax[0].imshow(temp_touch)
+                        # ax[0].set_title('> 3 temp touch')
+                        # ax[1].imshow(temp_touch_2)
+                        # ax[1].set_title('> 3 temp touch 2')
+                        # plt.show()
+
+                        arr = np.where((temp_touch == 0) & (temp_touch_2==255))
+                        # print(arr[0])
+                        if len(arr[0]) > 0:
+                        # print('TOUCH')
+                        # print('> 3 ', len(objects[i].contour), objects[i].border_width)
+                            temp = np.zeros_like(img)
+                            cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width-2))
+                            temp_cont = detect_cont(temp)
+                            objects[i].border = temp_cont[0].reshape(-1, 2).copy()
+                            objects[i].border_width -= 2 
+                        cv2.drawContours(res, [first_contours[i]], -1, 128, 2*(objects[i].border_width-1))
                         temp = np.zeros_like(img)
-                        # cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width-1))
-                        cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(1))
+                        cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
+                        zeros = np.where((temp == 255) & (res==0))
+                        
+                        if len(zeros[0]) > 0:
+                            res[zeros[0][:], zeros[1][:]] = 128
 
-                        temp_cont = detect_cont(temp)
-                        objects[i].border = temp_cont[0].reshape(-1, 2).copy()
-                        objects[i].border_width = 1
-                    cv2.drawContours(res, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
+                    else:
+                        if touch(img, first_contours, objects, i) and objects[i].border_width>1:
+                            temp = np.zeros_like(img)
+                            # cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width-1))
+                            cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(1))
 
-                    temp = np.zeros_like(img)
-                    cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
-                    zeros = np.where((temp == 255) & (res==0))
-                    if len(zeros[0]) > 0:
-                        res[zeros[0][:], zeros[1][:]] = 128
-                cv2.drawContours(res, [first_contours[i]], -1, 255, -1)
-        cv2.imwrite(f'{semantic_path}/{file}', res.astype(np.uint8))
+                            temp_cont = detect_cont(temp)
+                            objects[i].border = temp_cont[0].reshape(-1, 2).copy()
+                            objects[i].border_width = 1
+                        cv2.drawContours(res, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
 
+                        temp = np.zeros_like(img)
+                        cv2.drawContours(temp, [first_contours[i]], -1, 128, 2*(objects[i].border_width))
+                        zeros = np.where((temp == 255) & (res==0))
+                        if len(zeros[0]) > 0:
+                            res[zeros[0][:], zeros[1][:]] = 128
+                    cv2.drawContours(res, [first_contours[i]], -1, 255, -1)
+            cv2.imwrite(f'{semantic_path}/{file}', res.astype(np.uint8))
+        else: # semantic mask is already exists
+            # print('DOESNT NEED A MASK')
+            # objects = []
+            # first_contours = detect_cont(img)
+            # ext, int = detect_contours(img)
+            objects = detect_contours(img)
+            print(len(objects))
+
+            # for i in range()
+            # print(ext, int)
+            # for i in range(len(ext)):
+            #     temp_bord = np.zeros_like(img)
+            #     cv2.drawContours(temp_bord, [ext[i].reshape(-1, 2)], -1, 128, -1)
+            #     temp_hole = np.zeros_like(img)
+            #     cv2.drawContours(temp_hole, [int[j].reshape(-1, 2)], -1, 255, -1)
+            #     set_border = set(map(tuple, np.argwhere(temp_bord==128)))
+            #     set_hole = set(map(tuple, np.argwhere(temp_hole==255)))
+            #     if set_hole.issubset(set_border):
+                # obj = Figure(int[i]) # создаем объекты класса Figure
+                # obj.border = ext[i].copy()
+                # objects.append(obj)
+            #     else:
+            #         obj = Figure(int[i]) # создаем объекты класса Figure
+            #         obj.contour = None
+            #         obj.border = ext[i].copy()
+            #         objects.append(obj)
+            # for i in range(len(objects)):
+            #     if objects[i].contour == None:
+
+
+
+                # else:
+
+            res = img.copy()
+            
 
         # for each contour
         width_full = np.zeros_like(img)
@@ -443,10 +504,9 @@ if __name__ == '__main__':
                 for i in tqdm(range(len(objects))):
                     if objects[i] is not None:
                         temp = np.zeros_like(img)
-                        cv2.drawContours(temp, [objects[i].border], -1, 128, -1)
-                        cv2.drawContours(temp, [objects[i].contour], -1, 255, -1)
-
+                        о
                         width, new_angles, color_map = transform_w_bezier_new(temp, [objects[i].border], [objects[i].contour])
+                        
                         color_map[temp == 0] = color_back
                         color_map[temp == 255] = color_hole
                         new_angles[temp != 128] = 0.0
@@ -464,16 +524,15 @@ if __name__ == '__main__':
 
             else:
                 ext, int = detect_contours(res)
-                # print(len(int), len(ext))
                 width, new_angles, color_map = transform_w_bezier_new(res, ext, int)
                 color_map[res == 0] = color_back
                 color_map[res == 255] = color_hole
-                print(k)
+                # print(k)
                 signal_full = formula_second1(res, new_angles, color_map, k)
                 signal_full = cv2.GaussianBlur(signal_full, (11,11), 0)
 
             # cv2.imwrite(f'{signal_path}/{file[:-4]}_{method}_signal_test.png', signal_full.astype(np.uint8))
-            cv2.imwrite(f'{signal_path}/{file}.png', signal_full.astype(np.uint8))
+            cv2.imwrite(f'{signal_path}/{file}', signal_full.astype(np.uint8))
             a = random.randint(40, 50)
             b = random.randint(5, 10)
             # a = 70
