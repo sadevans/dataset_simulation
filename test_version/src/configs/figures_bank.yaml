@@ -1,0 +1,15 @@
+figures:
+  - shape: small_rectangle
+    height: 50
+    width: 50
+    corner_radius: 20
+  - shape: big_rectangle
+    height: 100
+    width: 100
+    corner_radius: 20
+  - shape: circle
+    height: 50
+    width: 50
+  - shape: big_circle
+    height: 100
+    width: 100
