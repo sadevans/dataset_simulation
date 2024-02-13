@@ -10,6 +10,7 @@ from src.Img import *
 from src.Fig import Figure
 
 
+
 class Generator():
     def __init__(self, flag_image: str, image_size: tuple, color_hole: float, color_back: float, signal_algo: str, num_images: int):
         """
@@ -30,8 +31,11 @@ class Generator():
         self.signal_algo = signal_algo
         self.num_images = num_images
 
-        self.cpu_count = multiprocessing.cpu_count()
-        # self.cpu_count = 4
+        self.pixel_size = 12
+        self.resist_thickness = 700
+
+        # self.cpu_count = multiprocessing.cpu_count()
+        self.cpu_count = 4
         self.image_objects = []
         self.images = [Img(np.zeros(self.image_size, dtype=np.float32))]*num_images
 
@@ -122,7 +126,7 @@ class Generator():
                     (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, -1)
         
 
-        self.compute_figure(image, Figure(cont[0], bord_cont[0], image.image))
+        self.compute_figure(image, Figure(self, cont[0].reshape(-1, 2), bord_cont[0].reshape(-1, 2), image.image))
 
         # image.figures.append(Figure(cont[0], bord_cont[0]))
         return image.image
@@ -140,13 +144,18 @@ class Generator():
         cv2.circle(image.image, position, height//2, 255, 2)
         cv2.circle(image.image, position, height//2, 255, -1)
 
-        self.compute_figure(image, Figure(cont[0], bord_cont[0], image.image))
+        # print(cont[0])
+        self.compute_figure(image, Figure(self, cont[0].reshape(-1, 2), bord_cont[0].reshape(-1, 2), image.image))
         # image.figures.append(Figure(cont[0], bord_cont[0]))
         return image.image
     
 
     def compute_figure(self, image, fig):
         image.figures.append(fig)
+        fig.compute_local_maps()
+
+        # print(fig.hole_contour)
+        
 
         
 
