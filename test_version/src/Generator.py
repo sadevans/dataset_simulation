@@ -13,6 +13,9 @@ import time
 from src.Img import *
 from src.Fig import Figure
 import itertools
+import gc
+import streamlit as st
+# from streamlit import caching
 
 # POOL_SIZE = 4
 # local_storage = threading.local()
@@ -53,17 +56,6 @@ class Generator():
     
         if self.flag_image == 'scratch':
             self.generate_images()
-
-
-    # def init_thread_resource(self, resources):
-
-    #     local_storage.pool_idx = resources.get(False)
-    #     print(f'\nThread {threading.get_ident()} has pool_idx {local_storage.pool_idx}')
-        ## A thread can also initialize other things here, meant for only 1 thread, e.g.
-        # local_storage.db_connection = open_db_connection()
-
-
-
 
     def generate_single_image_star(self, a_b):
         return self.generate_single_image(*a_b)
@@ -107,9 +99,16 @@ class Generator():
             i = 0
             # for image in pool.map(self.generate_single_image, self.images):
             for image in pool.map(self.generate_single_image, np.arange(0,self.num_images)):
+                gc.collect()
+                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/masks/img_{i}.png', image.image.astype(np.uint8))
+                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/signal/img_{i}.png', image.signal_image.astype(np.uint8))
+                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/raw/img_{i}.png', image.raw_image.astype(np.uint8))
 
-                self.image_objects.append(image)
-                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/masks/mask_{i}.png', image.image.astype(np.uint8))
+
+                del image
+                # caching.clear_cache()
+                st.runtime.legacy_caching.clear_cache()
+                gc.collect()
                 i+=1
         finally:
             pool.close()

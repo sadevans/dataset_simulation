@@ -5,6 +5,7 @@ import random
 import yaml
 import torch
 from torch.distributions.gamma import Gamma
+import gc
 
 
 from src.Fig import *
@@ -17,6 +18,7 @@ class Img():
         self.figures = []
 
         self.color_map = np.zeros_like(image, dtype=np.float32)
+        self.color_map[self.color_map==0] = self.solver.color_back
         self.angles_map = np.zeros_like(image, dtype=np.float32)
         self.width_map = np.zeros_like(image, dtype=np.float32)
 
@@ -78,14 +80,19 @@ class Img():
             else:
                 fig = Figure(position, [], [], self.image)
                 self.image = fig.draw(self.image, random_figure, position, border_width)
-                self.figures.append(fig)
+                # self.figures.append(fig)
                 fig.compute_local_maps(self.solver)
+
+                fig.make_flash(self.solver)
                 figure_pixels = np.where(fig.mask_figure_local != 0)
 
                 self.paste_locals_in_global(figure_pixels, fig)
 
-        self.color_map[self.image==255] = 85.0
-        self.color_map[self.image==0] = 110.0
+                del fig
+                gc.collect()
+
+        # self.color_map[self.image==255] = 85.0
+        # self.color_map[self.image==0] = 110.0
 
         self.compute_signal()
         self.add_noise()
@@ -134,12 +141,12 @@ class Img():
 
         self.signal_image = np.clip(cv2.GaussianBlur(self.signal_image, (11,11), 0), 0, 255)
 
-        cv2.imwrite('/home/sadevans/space/work/dataset_simulation/test_version/data/test_signal.png', self.signal_image.astype(np.uint8))
+        # cv2.imwrite('/home/sadevans/space/work/dataset_simulation/test_version/data/test_signal.png', self.signal_image.astype(np.uint8))
 
 
     def add_noise(self):
-        a = 30
-        b = 6
+        a = random.randint(30, 70)
+        b = random.randint(6, 15)
         m = Gamma(torch.tensor([a], dtype=torch.float32), torch.tensor([b], dtype=torch.float32))
 
         self.raw_image = (torch.Tensor(self.signal_image) + m.sample()* torch.randn(torch.Tensor(self.signal_image).shape)).numpy().copy()

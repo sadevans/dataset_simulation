@@ -13,3 +13,6 @@ figures:
   - shape: big_circle
     height: 100
     width: 100
+  - shape: big_big_circle
+    height: 300
+    width: 300

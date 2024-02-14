@@ -84,6 +84,14 @@ class Figure():
                                                                                 [self.border_contour], [self.hole_contour])
 
 
+    def make_flash(self, solver):
+        # print('BEFORE: ', np.unique(self.color_map_local))
+        self.color_map_local = solver.make_flash(self).copy()
+        # print(np.unique(self.color_map_local))
+
+
+
+
     def detect_cont(self, img):
         cont, _ = cv2.findContours(img.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         return cont
