@@ -107,7 +107,7 @@ class Solver():
                         prev = [self.compute_previous_pixel(point, nearest_point)]
                         discrete_line = list(zip(*line(*prev[0], *nearest_point))) # find all pixels from the line
                         dist_ = len(discrete_line) - 2
-
+                    # print(dist_)
                     if dist_ > 1:
                         new_line = np.zeros(dist_*self.pixel_size, dtype=np.float32)
                         _, y = self.bezier(new_line, np.linspace(0, 1, len(new_line)), 0.0, self.resist_thickness, 100)
@@ -153,6 +153,7 @@ class Solver():
 
                     if dist_ == 0:
                         dist_ = 1
+                    # print(dist_)
 
                     if dist_ > 1:
                         new_line = np.zeros(dist_*self.pixel_size, dtype=np.float32)

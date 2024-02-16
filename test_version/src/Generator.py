@@ -95,7 +95,7 @@ class Generator():
         # pool.join()
 
         try:
-            pool = multiprocessing.Pool(processes = 4)
+            pool = multiprocessing.Pool(processes = 2)
             i = 0
             # for image in pool.map(self.generate_single_image, self.images):
             for image in pool.map(self.generate_single_image, np.arange(0,self.num_images)):
