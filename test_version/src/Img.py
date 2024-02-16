@@ -79,7 +79,7 @@ class Img():
         while iters > 0:
             # random_figure = random.choice(self.figures_bank['figures'])
             random_figure = random.choice(self.figures_bank)
-            print(random_figure)
+            # print(random_figure)
             patch = cv2.imread(random_figure, 0).astype(np.float32)
             # shape = random_figure['shape']
             # height = random_figure['height']

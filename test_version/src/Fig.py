@@ -1,7 +1,7 @@
 import numpy as np
 import cv2
 import matplotlib.pyplot as plt
-
+import gc
 
 class Figure():
     def __init__(self, position, hole_contour, border_contour, image):
@@ -48,7 +48,8 @@ class Figure():
         else: 
             border_contours = border_contours
             self.border_contour = border_contours[0].reshape(-1, 2).copy()
-
+        del temp
+        gc.collect()
         self.make_local_mask()
         return image
 

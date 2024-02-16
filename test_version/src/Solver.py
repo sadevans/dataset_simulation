@@ -31,8 +31,10 @@ class Solver():
 
     def draw_gradient_line(self, img, start_point, points, colors, thickness=4):
         start = start_point
-        for i in range(1, len(points) - 1):
-            # if img[start[1], start[0]] == 0 or img[start[1], start[0]] == 255 or img[start[1], start[0]]==128:
+        # min_length = min(len(points), len(colors))
+        min_length = len(points)
+
+        for i in range(1, min_length - 1):
             if i+1 != len(points)-1:
                 cv2.line(img, start, points[i+1], colors[i], thickness)
             start = points[i]
@@ -42,7 +44,12 @@ class Solver():
     def closest_point(self, point, array):
         diff = array - point
         distance = np.einsum('ij,ij->i', diff, diff)
-        return np.argmin(distance), distance
+
+        # print(distance)
+        if len(distance) == 0:
+            return 0, []
+        else:
+            return np.argmin(distance), distance
     
 
     def compute_previous_pixel(self, first_pixel, last_pixel, distance=1):
@@ -107,7 +114,6 @@ class Solver():
                         prev = [self.compute_previous_pixel(point, nearest_point)]
                         discrete_line = list(zip(*line(*prev[0], *nearest_point))) # find all pixels from the line
                         dist_ = len(discrete_line) - 2
-                    # print(dist_)
                     if dist_ > 1:
                         new_line = np.zeros(dist_*self.pixel_size, dtype=np.float32)
                         _, y = self.bezier(new_line, np.linspace(0, 1, len(new_line)), 0.0, self.resist_thickness, 100)
@@ -118,7 +124,6 @@ class Solver():
 
                         reshaped_colors  = np.array(colors).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
                         angles = np.arctan(np.abs(np.gradient(y)))
-                        # if dist_==2:print(angles)
                         new_angl = angles[::self.pixel_size]
                         reshaped_angls  = np.array(angles).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
                         averages_angls = np.max(reshaped_angls, axis=1)
@@ -138,13 +143,18 @@ class Solver():
                         cv2.line(color_map, point, nearest_point, (np.tan(np.deg2rad(89))*self.pixel_size * 110)/self.resist_thickness, 2)
 
                     cv2.line(width_img, point, nearest_point, dist_, 3)
+                    
+        width_img = width_img.astype(np.int32)
 
+        zeros = [tuple([np.array([point for point in int[0] if color_map[point[1], point[0]]  == 0 and width_img[point[1], point[0]]  != 0], dtype=np.int32)])[0].reshape(-1,2)]
 
-        for cont_ext, cont_int in zip(ext, int):
+        for cont_ext, cont_int in zip(ext, zeros):
             for point in cont_int:
                     min_dist = float('inf')
                     index, dist = self.closest_point(point, cont_ext)
-                    if dist[index] < min_dist :
+                    if index == 0 and len(dist) == 0:
+                        dist_ = 0
+                    elif dist[index] < min_dist :
                         min_dist = dist[index].item()
                         nearest_point = cont_ext[index]
                         next = [self.compute_next_pixel(point, nearest_point)]
@@ -153,7 +163,6 @@ class Solver():
 
                     if dist_ == 0:
                         dist_ = 1
-                    # print(dist_)
 
                     if dist_ > 1:
                         new_line = np.zeros(dist_*self.pixel_size, dtype=np.float32)
@@ -171,8 +180,7 @@ class Solver():
                     elif dist_ == 1:
                         y = [self.resist_thickness-10]
                         averages_colors = [(self.color_back - 2)]
-                        angles = [np.arctan(y[0]/(dist_*self.pixel_size))]
-                        cv2.line(new_angles, point, nearest_point, np.deg2rad(89), 2)
+                        cv2.line(new_angles, point, nearest_point, np.array([np.deg2rad(89), np.deg2rad(89)]), 2)
                         cv2.line(color_map, point, nearest_point, (np.tan(np.deg2rad(89))*self.pixel_size * 110)/self.resist_thickness, 2)
                     
                     if new_angles[point[1], point[0]]  == 0:
@@ -180,7 +188,6 @@ class Solver():
                         
                     if color_map[point[1], point[0]]  == 0:
                         self.draw_gradient_line(color_map, point, discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
-                    cv2.line(width_img, point, nearest_point, dist_, 2)
 
 
         img_cp = img.copy()
@@ -190,53 +197,57 @@ class Solver():
         color_map[img == 0] = self.color_back
         color_map[img == 255] = self.color_hole
 
+
         zeros = np.where((color_map==0) & (img==128))
         if len(zeros[0]) > 0:
             tmp = np.zeros_like(img)
             cv2.drawContours(tmp, [ext[0]], -1, 255, 0)
             c = self.detect_cont(tmp)
-            ext = np.argwhere(tmp > 0)
-            ext = np.array([list(reversed(ex)) for ex in ext])
+            ext_ = np.argwhere(tmp > 0)
+            ext_ = np.array([list(reversed(ex)) for ex in ext_])
             
             for i in range(len(zeros[0])):
                 point = (zeros[0][i], zeros[1][i])
+                if img[point[0], point[1]] != 255:
+                    index_int, _ = self.closest_point(point, cont_int)
+                    index_ext, _ = self.closest_point(point, ext_)
+                    nearest_point_int = cont_int[index_int]
+                    nearest_point_ext = ext_[index_ext]
+                    discrete_line_int = list(zip(*line(*point, *nearest_point_int)))
+                    discrete_line_ext = list(zip(*line(*point, *nearest_point_ext)))
+                    distance_int = len(discrete_line_int)
+                    distance_ext = len(discrete_line_ext)
+                    if distance_int < distance_ext:
+                        val = self.color_back - distance_int*np.tan(new_angles[point[0], point[1]])/(distance_ext + distance_int)
+                        width_img[point[0], point[1]] = distance_int
+                    else:
+                        val = self.color_hole + distance_ext*np.tan(new_angles[point[0], point[1]])/(distance_ext + distance_int)
+                        width_img[point[0], point[1]] = distance_ext
 
-                index_int, _ = self.closest_point(point, cont_int)
-                index_ext, _ = self.closest_point(point, ext)
-                nearest_point_int = cont_int[index_int]
-                nearest_point_ext = ext[index_ext]
-                discrete_line_int = list(zip(*line(*point, *nearest_point_int)))
-                discrete_line_ext = list(zip(*line(*point, *nearest_point_ext)))
-                distance_int = len(discrete_line_int)
-                distance_ext = len(discrete_line_ext)
-                if distance_int < distance_ext:
-                    val = self.color_back - distance_int*np.tan(new_angles[point[0], point[1]])/(distance_ext + distance_int)
-                else:
-                    val = self.color_hole + distance_ext*np.tan(new_angles[point[0], point[1]])/(distance_ext + distance_int)
-
-                if val == 85.0:
-                    val = (110.0 + 85.0)/2 -random.randint(10, 14)
-                elif val == 110.0:
-                    val = (110.0 + 85.0)/2 -random.randint(10, 14)
                 color_map[point[0], point[1]] = np.abs(val)
-        # color_map[img == 0] = 0
-        # color_map[img == 255] = 0
+                new_angles[point[0], point[1]] = np.unique(new_angles[(img==128) & (new_angles > 1)])[0]
+                
         color_map[img == 0] = self.color_back
         color_map[img == 255] = self.color_hole
+
+        del ext, int, zeros
+        gc.collect()
         return width_img, new_angles, color_map
     
+
+    def init_contour(self, image):
+        cont, _ = cv2.findContours(image.astype(np.uint8), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+        return cont
 
     def exponential_percent_rule(self, dist_, percent, growth_rate):
         new_line = np.array([percent * growth_rate ** i  for i in range(dist_)])
         new_line[new_line<0] = 0.0
         return new_line
 
-
     def linear_percent_rule(self, dist_, percent, step):
         new_line = np.linspace(percent, percent+step*dist_, dist_)
         new_line[new_line<0] = 0.0
         return new_line
-
 
     def bezier_percent_rule(self, dist_, percent, growth_rate):
         t = np.linspace(0, 1, dist_)
