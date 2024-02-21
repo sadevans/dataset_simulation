@@ -22,10 +22,7 @@ class Figure():
         temp = np.zeros_like(image)
 
         temp[position[1]-patch.shape[0]//2:position[1]+patch.shape[0] - patch.shape[0]//2, position[0]-patch.shape[1]//2:position[0]+patch.shape[1] - patch.shape[1]//2] = patch.copy()
-        # print()
-        # temp[position[0]-patch.shape[0]//2:position[0]+patch.shape[0] - patch.shape[0]//2, position[1]-patch.shape[1]//2:position[1]+patch.shape[1] - patch.shape[1]//2] = patch.copy()
-        # temp[position[0]-patch.shape[1]//2:position[0]+patch.shape[1] - patch.shape[1]//2, position[1]-patch.shape[0]//2:position[1]+patch.shape[0] - patch.shape[0]//2] = patch.copy()
-
+        
         hole_contours = self.detect_cont(temp)
         if len(hole_contours) == 2: 
             hole_contours = np.array(list(hole_contours[0]) + list(hole_contours[1])) #contours = tuple([np.array(list(contours[0]) + list(contours[1]))])[0].reshape(-1,2)
@@ -80,48 +77,99 @@ class Figure():
             # temp[patch == 255] = 255
 
 
-    def draw_rect(self, image, position, height, width, corner_radius, border_width):
+    def draw_rect(self, image,new_figure, corner_radius, border_width):
         temp = np.zeros_like(image, dtype=np.float32)
-        temp = cv2.rectangle(temp, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
-                (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, 20) 
-        temp = cv2.rectangle(temp, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
-                    (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, -1)
+        temp = cv2.rectangle(temp, (new_figure[0][0] - (new_figure[1]//2-corner_radius//2), new_figure[0][1]-(new_figure[2]//2-corner_radius//2)), 
+                (new_figure[0][0] + (new_figure[1]//2-corner_radius//2), new_figure[0][1]+ (new_figure[2]//2-corner_radius//2)), 255, 20) 
+        temp = cv2.rectangle(temp, (new_figure[0][0] - (new_figure[1]//2-corner_radius//2), new_figure[0][1]-(new_figure[2]//2-corner_radius//2)), 
+                    (new_figure[0][0] + (new_figure[1]//2-corner_radius//2), new_figure[0][1]+ (new_figure[2]//2-corner_radius//2)), 255, -1)
+        
+        temp = cv2.rectangle(temp, (new_figure[0][0] - (new_figure[1]//2-corner_radius//2), new_figure[0][1]-(new_figure[2]//2-corner_radius//2)), 
+                (new_figure[0][0] + (new_figure[1]//2-corner_radius//2), new_figure[0][1]+ (new_figure[2]//2-corner_radius//2)), 255, 20) 
+        temp = cv2.rectangle(temp, (new_figure[0][0] - (new_figure[1]//2-corner_radius//2), new_figure[0][1]-(new_figure[2]//2-corner_radius//2)), 
+                (new_figure[0][0] + (new_figure[1]//2-corner_radius//2), new_figure[0][1]+ (new_figure[2]//2-corner_radius//2)), 255, -1)
     
         cont = self.detect_cont(temp)
         cv2.drawContours(image, cont, 0, 128, border_width*2)
         cv2.drawContours(temp, cont, 0, 128, border_width*2)
         bord_cont = self.detect_cont(temp)
-        image = cv2.rectangle(image, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
-                (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, 20) 
-        image = cv2.rectangle(image, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
-                    (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, -1)
+        image = cv2.rectangle(image, (new_figure[0][0] - (new_figure[1]//2-corner_radius//2), new_figure[0][1]-(new_figure[2]//2-corner_radius//2)), 
+                (new_figure[0][0] + (new_figure[1]//2-corner_radius//2), new_figure[0][1]+ (new_figure[2]//2-corner_radius//2)), 255, 20) 
+        image = cv2.rectangle(image, (new_figure[0][0] - (new_figure[1]//2-corner_radius//2), new_figure[0][1]-(new_figure[2]//2-corner_radius//2)), 
+                    (new_figure[0][0] + (new_figure[1]//2-corner_radius//2), new_figure[0][1]+ (new_figure[2]//2-corner_radius//2)), 255, -1)
         
 
         self.hole_contour = cont[0].reshape(-1, 2).copy()
         self.border_contour = bord_cont[0].reshape(-1, 2).copy()
-
+        del temp, cont, bord_cont
+        gc.collect()
 
         self.make_local_mask()
-        return image
+        return image.copy()
     
 
-    def draw_circle(self, image, position, height, border_width):
+    def draw_circle(self, image, new_figure, border_width):
         temp = np.zeros_like(image, dtype=np.float32)
 
-        cv2.circle(temp, position, height//2, 255, 2)
-        cv2.circle(temp, position, height//2, 255, -1)
+        cv2.circle(temp, new_figure[0], new_figure[1]//2, 255, 2)
+        cv2.circle(temp, new_figure[0], new_figure[1]//2, 255, -1)
         cont = self.detect_cont(temp)
         cv2.drawContours(temp, cont, 0, 128, border_width*2)
         bord_cont = self.detect_cont(temp)
         cv2.drawContours(image, cont, 0, 128, border_width*2)
-        cv2.circle(image, position, height//2, 255, 2)
-        cv2.circle(image, position, height//2, 255, -1)
+        cv2.circle(image, new_figure[0], new_figure[1]//2, 255, 2)
+        cv2.circle(image, new_figure[0], new_figure[1]//2, 255, -1)
         # print(cont[0].reshape(-1, 2))
         self.hole_contour = cont[0].reshape(-1, 2).copy()
         self.border_contour = bord_cont[0].reshape(-1, 2).copy()
+        del temp, cont, bord_cont
+        gc.collect()
 
         self.make_local_mask()
-        return image
+        return image.copy()
+
+    # def draw_rect(self, image, position, height, width, corner_radius, border_width):
+    #     temp = np.zeros_like(image, dtype=np.float32)
+    #     temp = cv2.rectangle(temp, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
+    #             (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, 20) 
+    #     temp = cv2.rectangle(temp, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
+    #                 (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, -1)
+    
+    #     cont = self.detect_cont(temp)
+    #     cv2.drawContours(image, cont, 0, 128, border_width*2)
+    #     cv2.drawContours(temp, cont, 0, 128, border_width*2)
+    #     bord_cont = self.detect_cont(temp)
+    #     image = cv2.rectangle(image, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
+    #             (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, 20) 
+    #     image = cv2.rectangle(image, (position[0] - (height//2-corner_radius//2), position[1]-(height//2-corner_radius//2)), 
+    #                 (position[0] + (height//2-corner_radius//2), position[1]+ (height//2-corner_radius//2)), 255, -1)
+        
+
+    #     self.hole_contour = cont[0].reshape(-1, 2).copy()
+    #     self.border_contour = bord_cont[0].reshape(-1, 2).copy()
+
+
+    #     self.make_local_mask()
+    #     return image
+    
+
+    # def draw_circle(self, image, position, height, border_width):
+    #     temp = np.zeros_like(image, dtype=np.float32)
+
+    #     cv2.circle(temp, position, height//2, 255, 2)
+    #     cv2.circle(temp, position, height//2, 255, -1)
+    #     cont = self.detect_cont(temp)
+    #     cv2.drawContours(temp, cont, 0, 128, border_width*2)
+    #     bord_cont = self.detect_cont(temp)
+    #     cv2.drawContours(image, cont, 0, 128, border_width*2)
+    #     cv2.circle(image, position, height//2, 255, 2)
+    #     cv2.circle(image, position, height//2, 255, -1)
+    #     # print(cont[0].reshape(-1, 2))
+    #     self.hole_contour = cont[0].reshape(-1, 2).copy()
+    #     self.border_contour = bord_cont[0].reshape(-1, 2).copy()
+
+    #     self.make_local_mask()
+    #     return image
 
 
     def make_local_mask(self):

@@ -22,7 +22,7 @@ import streamlit as st
 
 
 class Generator():
-    def __init__(self, solver, flag_image: str, image_size: tuple, color_hole: float, color_back: float, signal_algo: str, num_images: int):
+    def __init__(self, solver, flag_image: str, image_size: tuple, color_hole: float, color_back: float, signal_algo: str, num_images: int, num_figures: int, path: os.path):
         """
         - [ ]  изображения с нуля или же по существующим бинарным маскам
         - [ ]  для генерации с нуля размер изображений задается пользователем
@@ -41,6 +41,8 @@ class Generator():
         self.color_back = color_back
         self.signal_algo = signal_algo
         self.num_images = num_images
+        self.num_figures = num_figures
+        self.root_path = path
 
         self.pixel_size = 12
         self.resist_thickness = 700
@@ -63,12 +65,12 @@ class Generator():
 
     def generate_single_image(self, i):
         img = Img(self.solv, np.zeros(self.image_size, dtype=np.float32))
-        img.place_figures()
+        img.place_figures(num_figures = 100)
         return img
 
 
     def generate_images(self):
-        start_multi_time_v1 = time.time()
+        # start_multi_time_v1 = time.time()
 
         # resources = queue.Queue(POOL_SIZE)  # one resource per thread
         # for pool_idx in range(POOL_SIZE):
@@ -95,24 +97,32 @@ class Generator():
         # pool.join()
 
         try:
-            pool = multiprocessing.Pool(processes = 2)
+            pool = multiprocessing.Pool(processes = 4)
             i = 0
             # for image in pool.map(self.generate_single_image, self.images):
             for image in pool.map(self.generate_single_image, np.arange(0,self.num_images)):
+                i = len(os.listdir(f'{self.root_path}/semantic_masks/'))
+                plt.imshow(image.image)
+                plt.show()
                 gc.collect()
-                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/masks/img_{i}.png', image.image.astype(np.uint8))
-                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/signal/img_{i}.png', image.signal_image.astype(np.uint8))
-                cv2.imwrite(f'/home/sadevans/space/work/dataset_simulation/test_version/data/raw/img_{i}.png', image.raw_image.astype(np.uint8))
+
+                cv2.imwrite(f'{self.root_path}/semantic_masks/{i:04d}.png', image.image.astype(np.uint8))
+                cv2.imwrite(f'{self.root_path}/signal/{i:04d}.png', image.signal_image.astype(np.uint8))
+                cv2.imwrite(f'{self.root_path}/raw/{i:04d}.png', image.raw_image.astype(np.uint8))
 
 
-                del image
+                # del image, i
+                del image, i
+                gc.collect()
                 # caching.clear_cache()
-                st.runtime.legacy_caching.clear_cache()
-                gc.collect()
-                i+=1
+                # st.runtime.legacy_caching.clear_cache()
+                # gc.collect()
+                # i+=1
         finally:
             pool.close()
             pool.join()
+            del pool
+            gc.collect()
         # print('Processing time: {0} [sec]'.format(time.time() - start_multi_time_v1))
 
 

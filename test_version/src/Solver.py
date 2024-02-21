@@ -2,8 +2,6 @@ import numpy as np
 import matplotlib.pyplot as plt
 import cv2
 import random
-import multiprocessing
-import time
 from skimage.draw import line
 import gc
 
@@ -45,7 +43,6 @@ class Solver():
         diff = array - point
         distance = np.einsum('ij,ij->i', diff, diff)
 
-        # print(distance)
         if len(distance) == 0:
             return 0, []
         else:
@@ -147,56 +144,47 @@ class Solver():
         width_img = width_img.astype(np.int32)
 
         zeros = [tuple([np.array([point for point in int[0] if color_map[point[1], point[0]]  == 0 and width_img[point[1], point[0]]  != 0], dtype=np.int32)])[0].reshape(-1,2)]
+        if len(zeros) != 0:
+            for cont_ext, cont_int in zip(ext, zeros):
+                for point in cont_int:
+                        min_dist = float('inf')
+                        index, dist = self.closest_point(point, cont_ext)
+                        if index == 0 and len(dist) == 0:
+                            dist_ = 0
+                        elif dist[index] < min_dist :
+                            min_dist = dist[index].item()
+                            nearest_point = cont_ext[index]
+                            next = [self.compute_next_pixel(point, nearest_point)]
+                            discrete_line = list(zip(*line(*point, *next[0]))) # find all pixels from the line
+                            dist_ = len(discrete_line) - 2
 
-        for cont_ext, cont_int in zip(ext, zeros):
-            for point in cont_int:
-                    min_dist = float('inf')
-                    index, dist = self.closest_point(point, cont_ext)
-                    if index == 0 and len(dist) == 0:
-                        dist_ = 0
-                    elif dist[index] < min_dist :
-                        min_dist = dist[index].item()
-                        nearest_point = cont_ext[index]
-                        next = [self.compute_next_pixel(point, nearest_point)]
-                        discrete_line = list(zip(*line(*point, *next[0]))) # find all pixels from the line
-                        dist_ = len(discrete_line) - 2
+                        if dist_ == 0:
+                            dist_ = 1
 
-                    if dist_ == 0:
-                        dist_ = 1
+                        if dist_ > 1:
+                            new_line = np.zeros(dist_*self.pixel_size, dtype=np.float32)
+                            _, y = self.bezier(new_line, np.linspace(0, 1, len(new_line)), 255.0, self.resist_thickness, 100)
+                            _, colors = self.bezier(new_line, np.linspace(0, 1, len(new_line)), 255.0, self.color_back, self.color_hole)
+                            reshaped_y  = np.array(y).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
+                            averages_y = np.max(reshaped_y, axis=1)
+                            reshaped_colors  = np.array(colors).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
+                            angles = np.arctan(np.abs(np.gradient(y)))
+                            reshaped_angls  = np.array(angles).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
+                            averages_angls = np.max(reshaped_angls, axis=1)
+                            max_indices = np.argmax(reshaped_angls, axis=1)
+                            averages_colors = reshaped_colors[np.arange(len(reshaped_colors)), max_indices]
 
-                    if dist_ > 1:
-                        new_line = np.zeros(dist_*self.pixel_size, dtype=np.float32)
-                        _, y = self.bezier(new_line, np.linspace(0, 1, len(new_line)), 255.0, self.resist_thickness, 100)
-                        _, colors = self.bezier(new_line, np.linspace(0, 1, len(new_line)), 255.0, self.color_back, self.color_hole)
-                        reshaped_y  = np.array(y).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
-                        averages_y = np.max(reshaped_y, axis=1)
-                        reshaped_colors  = np.array(colors).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
-                        angles = np.arctan(np.abs(np.gradient(y)))
-                        reshaped_angls  = np.array(angles).reshape(-1, self.pixel_size)  # Разбиваем на подмассивы по self.pixel_size элементов
-                        averages_angls = np.max(reshaped_angls, axis=1)
-                        max_indices = np.argmax(reshaped_angls, axis=1)
-                        averages_colors = reshaped_colors[np.arange(len(reshaped_colors)), max_indices]
-
-                    elif dist_ == 1:
-                        y = [self.resist_thickness-10]
-                        averages_colors = [(self.color_back - 2)]
-                        cv2.line(new_angles, point, nearest_point, np.array([np.deg2rad(89), np.deg2rad(89)]), 2)
-                        cv2.line(color_map, point, nearest_point, (np.tan(np.deg2rad(89))*self.pixel_size * 110)/self.resist_thickness, 2)
-                    
-                    if new_angles[point[1], point[0]]  == 0:
-                        self.draw_gradient_line(new_angles, point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                        elif dist_ == 1:
+                            y = [self.resist_thickness-10]
+                            averages_colors = [(self.color_back - 2)]
+                            cv2.line(new_angles, point, nearest_point, np.array([np.deg2rad(89), np.deg2rad(89)]), 2)
+                            cv2.line(color_map, point, nearest_point, (np.tan(np.deg2rad(89))*self.pixel_size * 110)/self.resist_thickness, 2)
                         
-                    if color_map[point[1], point[0]]  == 0:
-                        self.draw_gradient_line(color_map, point, discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
-
-
-        img_cp = img.copy()
-        mask = img_cp != 128 
-        width_img[mask] = 0
-        new_angles[mask] = 0
-        color_map[img == 0] = self.color_back
-        color_map[img == 255] = self.color_hole
-
+                        if new_angles[point[1], point[0]]  == 0:
+                            self.draw_gradient_line(new_angles, point, discrete_line[-1::-1], averages_angls[-1::-1], thickness=2)
+                            
+                        if color_map[point[1], point[0]]  == 0:
+                            self.draw_gradient_line(color_map, point, discrete_line[-1::-1], averages_colors[-1::-1], thickness=2)
 
         zeros = np.where((color_map==0) & (img==128))
         if len(zeros[0]) > 0:
@@ -316,7 +304,6 @@ class Solver():
 
         затем если удовлетворяет - расчитывается засвет
         """
-        # print()
         row_width_image, column_width_image, flag_blacks = self.hole_max_width_height(fig.mask_figure_local)
 
         if row_width_image.max()>=200 or column_width_image.max()>=200 : if_flash = True#if_flash = np.random.choice([True, False], p=[0.7,0.3])
@@ -333,7 +320,6 @@ class Solver():
             elif percent_law == 'linear': growth_rate = random.uniform(-2., 2.)
 
             else: growth_rate = random.uniform(-3., 3.)
-            # print(flash_type, flash_side, percent_flash, percent_law, growth_rate)
             if column_width_image.max()>=200 and row_width_image.max()<200: flash_type = 'horizontal'
             elif row_width_image.max()>=200 and column_width_image.max()<200: flash_type = 'vertical'
 
@@ -377,7 +363,6 @@ class Solver():
                         else: dist_ = len(fig.mask_figure_local[ind_start:ind_end+1,col])
 
                     new_colors, _ = self.compute_new_colors(dist_, percent=percent_list[i])
-                    # print(new_colors)
                     whites_and_bords = np.where(fig.mask_figure_local[ind_start:ind_end+1,col] != 0)
                     if flash_side == 'bottom':
                         fig.color_map_local[ind_start:ind_end+1,col][whites_and_bords] = new_colors[whites_and_bords]
@@ -424,7 +409,6 @@ class Solver():
                         if flag_blacks: dist_ = col_end - col_start + 1 #dist_ = len(solv.mask_objects[0].signal[row,ind_start:ind_end+1])
                         else: dist_ = len(fig.mask_figure_local[row,ind_start:ind_end+1])
                     new_colors, _ = self.compute_new_colors(dist_, percent=percent_list[i])
-                    # print(new_colors)
 
                     whites_and_bords = np.where(fig.mask_figure_local[row,ind_start:ind_end+1] != 0)
 
@@ -437,13 +421,11 @@ class Solver():
                     elif flash_side == 'center':
                         new_colors_ = list(new_colors) + list(new_colors[::-1]) + list([new_colors[0]])
                         if len(blacks[0]) == 0 and (ind_end - ind_start + 1)//2 < dist_: 
-                            print('here')
                             fig.color_map_local[row,ind_start:ind_end+1][whites_and_bords] = np.array(new_colors_)[whites_and_bords][::-1]
                         else: fig.color_map_local[row,ind_start:ind_end+1][whites_and_bords] = np.array(new_colors_)[whites_and_bords]
 
             del new_colors, whites_and_bords, blacks, ind_start, ind_end, dist_
             gc.collect()
-            # print('AFTER: ', np.unique(fig.color_map_local))
         return fig.color_map_local
 
     def hole_max_width_height(self, mask):
